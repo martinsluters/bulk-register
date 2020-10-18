@@ -9,9 +9,11 @@ php:
 
 matrix:
     fast_finish: true
+    allow_failures:
+        - php: nightly
 
 before_script:
-    - composer install --dev --no-interaction
+    - composer install --no-interaction
 
 script:
     - ./vendor/bin/phpunit
