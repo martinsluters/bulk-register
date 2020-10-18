@@ -1,0 +1,28 @@
+{
+    "name": "martinsluters/bulk-register",
+    "description": "Helper plugin that allows register custom post types and custom taxonomies in bulk",
+    "type": "wordpress-plugin",
+    "license": "GPL3",
+    "authors": [
+        {
+            "name": "Martins Luters",
+            "email": "luters.martins@gmail.com"
+        }
+    ],
+    "autoload": {
+      "psr-4": {
+        "MLWP\\BulkRegisterPlugin\\": "class/"
+      }
+    },
+    "require-dev": {
+        "wp-coding-standards/wpcs": "^2.2",
+        "dealerdirect/phpcodesniffer-composer-installer": "^0.6.2",
+        "10up/wp_mock": "0.4.2"
+    },
+    "require": {
+        "composer/installers": "~1.0"
+    },
+    "scripts": {
+      "test": "vendor/bin/phpunit"
+    }
+}
