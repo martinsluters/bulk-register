@@ -34,7 +34,7 @@ class BulkRegisterCustomPostTypes extends BulkRegister {
 			$args = $default_args;
 			$post_type_key = self::prepare_key( $key, $value );
 			$args['label'] = self::prepare_label_from_key( $post_type_key );
-			$args = self::parse_args( self::maybe_prepare_extra_args( $value ), $args );
+			$args = self::parse_args( self::maybe_extra_args( $value ), $args );
 
 			$results[] = register_post_type(
 				apply_filters( 'mlwp_bulk_register_custom_post_types_key', $post_type_key, $key, $value ),

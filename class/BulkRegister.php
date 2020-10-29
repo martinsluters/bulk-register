@@ -64,7 +64,12 @@ abstract class BulkRegister {
 	 * @return string key.
 	 */
 	public static function prepare_key( $possible_key_a, $possible_key_b ) {
-		return is_int( $possible_key_a ) ? (string) $possible_key_b : (string) $possible_key_a;
+		$key = $possible_key_a;
+		if ( is_int( $possible_key_a ) ) {
+			$key = $possible_key_b;
+		}
+
+		return sanitize_key( (string) $key );
 	}
 
 	/**
@@ -73,7 +78,7 @@ abstract class BulkRegister {
 	 * @param  mix $maybe_extra_args Expecting array or anything else.
 	 * @return array|null The array of extra arguments. Null if not array.
 	 */
-	public static function maybe_prepare_extra_args( $maybe_extra_args ) {
+	public static function maybe_extra_args( $maybe_extra_args ) {
 		return is_array( $maybe_extra_args ) ? $maybe_extra_args : null;
 	}
 }

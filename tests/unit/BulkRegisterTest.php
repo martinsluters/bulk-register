@@ -18,113 +18,131 @@ class BulkRegisterTest extends TestCase {
 	protected $anonymous_class_from_bulk_register;
 
 	public function setUp(): void {
-		WP_Mock::setUp();
 
 		// Create a new instance from the abstract BulkRegister Class
-		$this->anonymousClassFromBulkRegister = new class extends BulkRegister {
-			public function register( $registerables  ) {
+		$this->anonymous_class_from_bulk_register = new class extends BulkRegister {
+			public function register( $registerables ) {
 				return $this;
 			}
 		};
+
+		WP_Mock::setUp();
 	}
 
-	public function tearDown(): void
-	{
+	public function tearDown(): void {
 		WP_Mock::tearDown();
 	}
 
-   /**
-	* @covers \BulkRegister::parse_args
-	*/
-	public function testMustReturnEmptyArrayIfBothNonArraysPassed() {
-		$this->assertEmpty( $this->anonymousClassFromBulkRegister->parse_args( 'string', 'string2' ) );
-	}
-
-   /**
-	* @covers \BulkRegister::parse_args
-	*/
-	public function testMustReturnFirstArrayIfOtherNonArrayPassed() {
-		$first_array = [ 'something' => 'else' ];
-
-		$this->assertJsonStringEqualsJsonString(
-			json_encode( $first_array ),
-			json_encode( $this->anonymousClassFromBulkRegister->parse_args( $first_array, 'string' ) )
-		);
-	}
-
 	/**
-	 * @dataProvider argsProvider
+	 * @dataProvider parseArgsProvider
 	 * @covers \BulkRegister::parse_args
 	 */
 	public function testParseArgs( $extra_args, $default_args, $expected ) {
-		$this->assertEquals( $expected, $this->anonymousClassFromBulkRegister->parse_args( $extra_args, $default_args ) );
-	}
-
-
-     /**
-     * @covers \BulkRegister::prepare_label_from_key
-     */
-    public function testConvertsUnderscoreToSpaceWithCamelcase()
-    {
-       	$this->assertSame( 'Foo Bar', $this->anonymousClassFromBulkRegister->prepare_label_from_key( 'foo_bar' ) );
-    }
-
-     /**
-     * @covers \BulkRegister::prepare_label_from_key
-     */
-    public function testConvertsHyphenToSpace()
-    {
-       	$this->assertSame( 'Foo Bar Baz', $this->anonymousClassFromBulkRegister->prepare_label_from_key( 'foo-bar-baz' ) );
-    }
-
-    /**
-     * @covers \BulkRegister::prepare_label_from_key
-     */
-    public function testConvertsWordsCamelcase()
-    {
-       	$this->assertSame( 'Foo Bar', $this->anonymousClassFromBulkRegister->prepare_label_from_key( 'foo_bar' ) );
-    }
-
-
-	 /**
-	 * @covers \BulkRegister::prepare_key
-	 */
-	public function testReturnsString() {
-		$this->assertIsString( $this->anonymousClassFromBulkRegister->prepare_key( 0, 'foo' ) );
-		$this->assertIsString( $this->anonymousClassFromBulkRegister->prepare_key( 'foo', 'bar' ) );
-	}
-
-	 /**
-	 * @covers \BulkRegister::prepare_key
-	 */
-	public function testReturnsKeyBifKeyAisInteger() {
-		$this->assertSame( 'foobar', $this->anonymousClassFromBulkRegister->prepare_key( 0, 'foobar' ) );
-	}
-
-	 /**
-	 * @covers \BulkRegister::prepare_key
-	 */
-	public function testReturnsKeyAifKeyAisNotInteger() {
-		$this->assertSame( 'foobar', $this->anonymousClassFromBulkRegister->prepare_key( 'foobar', null ) );
+		$this->assertEquals( $expected, $this->anonymous_class_from_bulk_register->parse_args( $extra_args, $default_args ) );
 	}
 
 	/**
-	 * @covers \BulkRegister::maybe_prepare_extra_args
+	 * @dataProvider prepareLabelFromKeyProvider
+	 * @covers \BulkRegister::prepare_label_from_key
+	 */
+	public function testPrepareLabelFromKey( $key, $expected ) {
+		$this->assertSame( $expected, $this->anonymous_class_from_bulk_register->prepare_label_from_key( $key ) );
+	}
+
+	/**
+	 * @dataProvider prepareKeyProvider
+	 * @covers \BulkRegister::prepare_key
+	 */
+	function testPrepareKey( $possible_key_a, $possible_key_b, $expected ) {
+
+		\WP_Mock::userFunction(
+			'sanitize_key',
+			array(
+				'times' => 1,
+				'args' => array( \WP_Mock\Functions::type( 'string' ) ),
+				'return' => $expected,
+			)
+		);
+
+		$this->assertSame( $expected, $this->anonymous_class_from_bulk_register->prepare_key( $possible_key_a, $possible_key_b ) );
+	}
+
+	/**
+	 * @covers \BulkRegister::maybe_extra_args
 	 */
 	public function testMustReturnNullIfArrayNotPassed() {
-		$this->assertNull( $this->anonymousClassFromBulkRegister->maybe_prepare_extra_args( 'foobarbaz' ) );
+		$this->assertNull( $this->anonymous_class_from_bulk_register->maybe_extra_args( 'foobarbaz' ) );
 	}
 
 	/**
-	 * @covers \BulkRegister::maybe_prepare_extra_args
+	 * @covers \BulkRegister::maybe_extra_args
 	 */
 	public function testMustReturnSameArray() {
-		$this->assertJsonStringEqualsJsonString( json_encode( [ 'jane' => 'doe' ] ), json_encode( $this->anonymousClassFromBulkRegister->maybe_prepare_extra_args( [ 'jane' => 'doe' ] ) ) );
+		$this->assertJsonStringEqualsJsonString( json_encode( [ 'jane' => 'doe' ] ), json_encode( $this->anonymous_class_from_bulk_register->maybe_extra_args( [ 'jane' => 'doe' ] ) ) );
 	}
 
-	public function argsProvider() {
+	public function prepareKeyProvider() {
+		// possible_key_a, possible_key_b, expected
+		return [
+			'must return sanitized key' =>
+			[
+				'foo bar baz',
+				'willnotbeused',
+				'foobarbaz',
+			],
+
+			'must return key "B" if key "A" is an integer' =>
+			[
+				0,
+				'foobar',
+				'foobar',
+			],
+
+			'must return key "A" if key "A" is not an integer' =>
+			[
+				'foobar',
+				'willnotbeused',
+				'foobar',
+			],
+		];
+	}
+
+	public function prepareLabelFromKeyProvider() {
+		// key, expected
+		return [
+			'must convert underscore to space with camelcase' =>
+			[
+				'foo_bar',
+				'Foo Bar',
+			],
+			'must convert hyphen to space' =>
+			[
+				'foo-bar',
+				'Foo Bar',
+			],
+			'must convert words camelcsase' =>
+			[
+				'foo-bar-baz',
+				'Foo Bar Baz',
+			],
+		];
+	}
+
+	public function parseArgsProvider() {
 		// extra args, default args, expected
 		return [
+			'must return extra args array if default args passed is not an array'  =>
+			[
+				[ 'extra' => 'args' ],
+				'baz',
+				[ 'extra' => 'args' ],
+			],
+			'must return empty array if extra args and default args are not arrays'  =>
+			[
+				'foo',
+				'bar',
+				[],
+			],
 			'extra args must take over default args if 1 dimension array'  =>
 			[
 				[ 'foo' => 1, ],

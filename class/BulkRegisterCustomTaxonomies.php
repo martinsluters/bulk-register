@@ -33,7 +33,7 @@ class BulkRegisterCustomTaxonomies extends BulkRegister {
 		foreach ( $custom_taxonomies as $key => $value ) {
 			$args = $defaults;
 			$taxonomy_key = self::prepare_key( $key, $value );
-			$extra_args = self::maybe_prepare_extra_args( $value );
+			$extra_args = self::maybe_extra_args( $value );
 			$object_type = self::maybe_prepare_object_types( $extra_args );
 			$args['label'] = self::prepare_label_from_key( $taxonomy_key );
 			$args = self::parse_args( $extra_args, $args );
@@ -58,11 +58,13 @@ class BulkRegisterCustomTaxonomies extends BulkRegister {
 	 */
 	public static function maybe_prepare_object_types( $extra_args ) {
 		$object_type = null;
-		if ( isset( $extra_args['object_type'] ) ) {
-			if ( is_array( $extra_args['object_type'] ) ) {
-				$object_type = $extra_args['object_type'];
-			} else {
-				$object_type = (string) $extra_args['object_type'];
+		if ( is_array( $extra_args ) ) {
+			if ( isset( $extra_args['object_type'] ) ) {
+				if ( is_array( $extra_args['object_type'] ) ) {
+					$object_type = $extra_args['object_type'];
+				} else {
+					$object_type = (string) $extra_args['object_type'];
+				}
 			}
 		}
 		return $object_type;

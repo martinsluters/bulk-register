@@ -8,10 +8,10 @@ use WP_Mock;
 
 class BulkRegisterCustomPostTypesTest extends TestCase {
 
-	public $bulk_register;
+	public $bulk_register_cpt;
 
 	public function setUp(): void {
-		$this->bulk_register = new BulkRegisterCustomPostTypes();
+		$this->bulk_register_cpt = new BulkRegisterCustomPostTypes();
 		WP_Mock::setUp();
 	}
 
@@ -19,29 +19,41 @@ class BulkRegisterCustomPostTypesTest extends TestCase {
 		WP_Mock::tearDown();
 	}
 
-	/**
-	 * @covers \BulkRegisterCustomPostTypes::register
-	 */
-	public function testMustReturnEmptyArrayIfArrayNotPassed() {
-		$this->assertEmpty( $this->bulk_register->register( 'string' ) );
+	public function expectSanitizeKeyPassthru( $times ) {
+		\WP_Mock::passthruFunction(
+			'sanitize_key',
+			array(
+				'times' => $times,
+			)
+		);
 	}
 
-
-	/**
+	 /**
+	 * @dataProvider invalidParamProvider
 	 * @covers \BulkRegisterCustomPostTypes::register
 	 */
-	public function testMustReturnEmptyArrayIfEmptyArrayPassed() {
-		$this->assertEmpty( $this->bulk_register->register( [] ) );
+	public function testMustReturnArrayIfInvalidParamsPassed( $param ) {
+		$this->assertisArray( $this->bulk_register_cpt->register( $param ) );
+	}
+
+	 /**
+	 * @depends testMustReturnArrayIfInvalidParamsPassed
+	 * @dataProvider invalidParamProvider
+	 * @covers \BulkRegisterCustomPostTypes::register
+	 */
+	public function testMustReturnEmptyArrayIfInvalidParamsPassed( $param ) {
+		$this->assertEmpty( $this->bulk_register_cpt->register( $param ) );
 	}
 
 	/**
-	 * @depends testMustReturnEmptyArrayIfArrayNotPassed
-	 * @depends testMustReturnEmptyArrayIfEmptyArrayPassed
+	 * @depends testMustReturnEmptyArrayIfInvalidParamsPassed
 	 * @covers \BulkRegisterCustomPostTypes::register
 	 * @dataProvider registerReturnArrayDataProvider
 	 */
-	public function testReturnArray( $post_types ) {
+	public function testPostTypeRegistration( $post_types ) {
 		$expected_return_value = $post_types;
+
+		$this->expectSanitizeKeyPassthru( count( $post_types ) );
 
 		\WP_Mock::userFunction(
 			'register_post_type',
@@ -52,7 +64,7 @@ class BulkRegisterCustomPostTypesTest extends TestCase {
 			)
 		);
 
-		$this->assertEqualsCanonicalizing( $expected_return_value, $this->bulk_register->register( $post_types ) );
+		$this->assertEqualsCanonicalizing( $expected_return_value, $this->bulk_register_cpt->register( $post_types ) );
 	}
 
 	public function registerReturnArrayDataProvider() {
@@ -65,5 +77,18 @@ class BulkRegisterCustomPostTypesTest extends TestCase {
 			],
 		];
 		return $data;
+	}
+
+	public function invalidParamProvider() {
+		return [
+			[ 'string' ],
+			[ null ],
+			[ false ],
+			[ true ],
+			[ 1 ],
+			[ 0 ],
+			[ [] ],
+			[ new \stdClass() ],
+		];
 	}
 }

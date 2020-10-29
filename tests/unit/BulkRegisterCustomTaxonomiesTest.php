@@ -5,6 +5,7 @@ namespace MLWP\BulkRegisterPlugin\BulkRegisterTests;
 use MLWP\BulkRegisterPlugin\BulkRegisterCustomTaxonomies;
 use WP_Mock\Tools\TestCase;
 use WP_Mock;
+use Mockery;
 
 class BulkRegisterCustomTaxonomiesTest extends TestCase {
 
@@ -19,33 +20,39 @@ class BulkRegisterCustomTaxonomiesTest extends TestCase {
 		WP_Mock::tearDown();
 	}
 
+	public function expectSanitizeKeyPassthru( $times ) {
+		\WP_Mock::passthruFunction(
+			'sanitize_key',
+			array(
+				'times' => $times,
+			)
+		);
+	}
+
 	 /**
+	 * @dataProvider invalidParamProvider
 	 * @covers \BulkRegisterCustomTaxonomies::register
 	 */
-	public function testMustReturnEmptyArrayIfArrayNotPassed() {
-		$this->assertEmpty( $this->bulk_register->register( 'string' ) );
+	public function testMustReturnArrayIfInvalidParamsPassed( $param ) {
+		$this->assertisArray( $this->bulk_register->register( $param ) );
 	}
 
-	/**
+	 /**
+	 * @depends testMustReturnArrayIfInvalidParamsPassed
+	 * @dataProvider invalidParamProvider
 	 * @covers \BulkRegisterCustomTaxonomies::register
 	 */
-	public function testMustReturnEmptyArrayIfEmptyArrayPassed() {
-		$this->assertEmpty( $this->bulk_register->register( [] ) );
+	public function testMustReturnEmptyArrayIfInvalidParamsPassed( $param ) {
+		$this->assertEmpty( $this->bulk_register->register( $param ) );
 	}
 
 
 	/**
+	 * @dataProvider invalidParamProvider
 	 * @covers \BulkRegisterCustomTaxonomies::maybe_prepare_object_types
 	 */
-	public function testMustReturnNullIfEmptyArrayPassed() {
-		$this->assertEmpty( $this->bulk_register::maybe_prepare_object_types( [] ) );
-	}
-
-	/**
-	 * @covers \BulkRegisterCustomTaxonomies::maybe_prepare_object_types
-	 */
-	public function testMustReturnNullIfNonArrayPassed() {
-		$this->assertNull( $this->bulk_register::maybe_prepare_object_types( '' ) );
+	public function testMustReturnNullIfInvalidParamsPassed( $param ) {
+		$this->assertEmpty( $this->bulk_register::maybe_prepare_object_types( $param ) );
 	}
 
 	/**
@@ -70,34 +77,58 @@ class BulkRegisterCustomTaxonomiesTest extends TestCase {
 	}
 
 	/**
-	 * @depends testMustReturnEmptyArrayIfArrayNotPassed
-	 * @depends testMustReturnEmptyArrayIfEmptyArrayPassed
+	 * @depends testMustReturnEmptyArrayIfInvalidParamsPassed
 	 * @covers \BulkRegisterCustomTaxonomies::register
 	 * @dataProvider registerReturnArrayDataProvider
 	 */
-	public function testReturnArray( $taxonomies ) {
+	public function testReturnArray( $taxonomies, $expected_return ) {
+
+		$this->expectSanitizeKeyPassthru( count( $taxonomies ) );
 
 		\WP_Mock::userFunction(
 			'register_taxonomy',
 			array(
 				'times' => count( $taxonomies ),
-				'args' => array( \WP_Mock\Functions::type( 'string' ), null, \WP_Mock\Functions::type( 'array' ) ),
-				'return_in_order' => $taxonomies,
+				'args' => array( \WP_Mock\Functions::type( 'string' ), "*", \WP_Mock\Functions::type( 'array' ) ),
+				'return_in_order' => $expected_return,
 			)
 		);
 
-		$this->assertEqualsCanonicalizing( $taxonomies, $this->bulk_register->register( $taxonomies ) );
+		$this->assertEqualsCanonicalizing( $expected_return, $this->bulk_register->register( $taxonomies ) );
 	}
 
 	public function registerReturnArrayDataProvider() {
+
+		$wp_taxonomy_instance = Mockery::mock( '\WP_Taxonomy' );
+		$wp_error_instance = Mockery::mock( '\WP_Error' );
+
 		$data = [
 			[
-				[ 'category_a' ],
+				[ 'category_a' => [ 'object_type' => 'object_name' ] ],
+				[ $wp_taxonomy_instance ],
 			],
 			[
 				[ 'category_b', 'category_c' ],
+				[ $wp_taxonomy_instance, $wp_taxonomy_instance ],
+			],
+			[
+				[ 'category_invalid_foo', 'category_invalid_bar' ],
+				[ $wp_error_instance, $wp_error_instance ],
 			],
 		];
 		return $data;
+	}
+
+	public function invalidParamProvider() {
+		return [
+			[ 'string' ],
+			[ null ],
+			[ false ],
+			[ true ],
+			[ 1 ],
+			[ 0 ],
+			[ [] ],
+			[ new \stdClass() ],
+		];
 	}
 }
